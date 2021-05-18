@@ -104,7 +104,7 @@ end
     single_dose::Bool = false #unique dose
     drop_rate::Float64 = 0.0 #probability of not getting second dose
     fixed_cov::Float64 = 0.4 #coverage of population
-    day_insert_kids::Int64 = 274
+    day_insert_kids::Int64 = 255
 
     red_risk_perc::Float64 = 1.0 #relative isolation in vaccinated individuals
     reduction_protection::Float64 = 0.0 #reduction in protection against infection
@@ -276,7 +276,7 @@ function main(ip::ModelParameters,sim::Int64)
     h_init2 = []
     h_init3 = []
     ## save the preisolation isolation parameters
-    _fpreiso = p.fpreiso
+    
     p.fpreiso = 0
 
     # split population in agegroups 
@@ -378,21 +378,23 @@ function vac_selection(sim::Int64)
     #pos_com = sample(pos_com,Int(round(p.comor_comp*length(pos_com))),replace=false)
 
 
-    pos_eld = findall(x-> humans[x].age>=70, 1:length(humans))
+    pos_eld = findall(x-> humans[x].age>=75, 1:length(humans))
     pos_eld = sample(rng,pos_eld,Int(round(p.eld_comp*length(pos_eld))),replace=false)
 
-    pos_old = findall(x-> humans[x].age>=50 && humans[x].age<70 && humans[x].comorbidity == 0 && !humans[x].hcw, 1:length(humans))
+    pos_old = findall(x-> humans[x].age>=65 && humans[x].age<75 && humans[x].comorbidity == 0 && !humans[x].hcw, 1:length(humans))
     pos_old = sample(rng,pos_old,Int(round(p.old_adults*length(pos_old))),replace=false)
 
-    pos_old_c = findall(x-> humans[x].age>=50 && humans[x].age<70 && humans[x].comorbidity == 1  && !humans[x].hcw, 1:length(humans))
+    pos_old_c = findall(x-> humans[x].age>=65 && humans[x].age<75 && humans[x].comorbidity == 1  && !humans[x].hcw, 1:length(humans))
     pos_old_c = sample(rng,pos_old_c,Int(round(p.old_adults*length(pos_old_c))),replace=false)
 
-    pos_young = findall(x-> humans[x].age>=p.min_age_vac && humans[x].age<50 && humans[x].comorbidity == 0  && !humans[x].hcw, 1:length(humans))
-    pos_young = sample(rng,pos_young,Int(round(p.young_adults*length(pos_young))),replace=false)
-
-    pos_young_c = findall(x-> humans[x].age>=p.min_age_vac && humans[x].age<50 && humans[x].comorbidity == 1  && !humans[x].hcw, 1:length(humans))
+    pos_young_c = findall(x-> humans[x].age>=p.min_age_vac && humans[x].age<65 && humans[x].comorbidity == 1  && !humans[x].hcw, 1:length(humans))
     pos_young_c = sample(rng,pos_young_c,Int(round(p.young_adults*length(pos_young_c))),replace=false)
 
+    pos_young_1 = findall(x-> humans[x].age>=40 && humans[x].age<65 && humans[x].comorbidity == 0  && !humans[x].hcw, 1:length(humans))
+    pos_young_1 = sample(rng,pos_young_1,Int(round(p.young_adults*length(pos_young_1))),replace=false)
+
+    pos_young_2 = findall(x-> humans[x].age>=p.min_age_vac && humans[x].age<40 && humans[x].comorbidity == 0  && !humans[x].hcw, 1:length(humans))
+    pos_young_2 = sample(rng,pos_young_2,Int(round(p.young_adults*length(pos_young_2))),replace=false)
 
     pos_kid = findall(x-> humans[x].age>=12 && humans[x].age<p.min_age_vac, 1:length(humans))
     pos_kid = sample(rng,pos_kid,Int(round(p.kid_comp*length(pos_kid))),replace=false)
@@ -406,48 +408,38 @@ function vac_selection(sim::Int64)
     #pos2 = shuffle([pos_n_com;pos_y])
     #pos2 = [pos_old;pos_young;pos_kid]
 
-    pos1 = shuffle(rng,[pos_hcw;pos_eld])
-    pos_11 = pos1[1:Int(floor(length(pos1)/2))]
-    pos_12 = pos1[Int(floor(length(pos1)/2)+1):end]
+    #pos1 = shuffle(rng,[pos_hcw;pos_eld])
+    #pos_11 = pos1[1:Int(floor(length(pos1)/2))]
+    #pos_12 = pos1[Int(floor(length(pos1)/2)+1):end]
 
-    pos2 = shuffle(rng,[pos_old_c;pos_young_c])
+    pos2 = shuffle(rng,[pos_eld;pos_old_c;pos_young_c])
 
-    pos_21 = pos2[1:Int(floor(length(pos2)/2))]
-    pos_22 = pos2[Int(floor(length(pos2)/2)+1):end]
+    ll = length([pos_young_1;pos_young_2])
 
-    pos_o1 = pos_old[1:Int(floor(length(pos_old)/2))]
-    pos_o2 = pos_old[Int(floor(length(pos_old)/2)+1):end]
+    wv1 = repeat([0.6],length(pos_young_1))
+    wv2 = repeat([0.4],length(pos_young_2))
 
-    pos_y1 = pos_young[1:Int(floor(length(pos_young)/2))]
-    pos_y2 = pos_young[Int(floor(length(pos_young)/2)+1):end]
+    wv = Weights([wv1;wv2])
 
-    pos_y1 = pos_young[1:Int(floor(length(pos_young)/2))]
-    pos_y2 = pos_young[Int(floor(length(pos_young)/2)+1):end]
+    pos3 = sample(rng,[pos_young_1;pos_young_2],wv,ll,replace = false)
 
-    pos_k1 = pos_kid[1:Int(floor(length(pos_kid)/2))]
-    pos_k2 = pos_kid[Int(floor(length(pos_kid)/2)+1):end]
+   # pos_21 = pos2[1:Int(floor(length(pos2)/2))]
+   # pos_22 = pos2[Int(floor(length(pos2)/2)+1):end]
+
+    #pos_o1 = pos_old[1:Int(floor(length(pos_old)/2))]
+    #pos_o2 = pos_old[Int(floor(length(pos_old)/2)+1):end]
+
+    #pos_y1 = pos_young[1:Int(floor(length(pos_young)/2))]
+    #pos_y2 = pos_young[Int(floor(length(pos_young)/2)+1):end]
+
+    #pos_y1 = pos_young[1:Int(floor(length(pos_young)/2))]
+    #pos_y2 = pos_young[Int(floor(length(pos_young)/2)+1):end]
+
+    #pos_k1 = pos_kid[1:Int(floor(length(pos_kid)/2))]
+    #pos_k2 = pos_kid[Int(floor(length(pos_kid)/2)+1):end]
   
-    v = [pos_11;shuffle(rng,[pos_12;pos_21]);shuffle(rng,[pos_22;pos_o1]);shuffle(rng,[pos_o2;pos_y1]);pos_y2;pos_kid]#shuffle(rng,[pos_y2;pos_k1]);pos_k2]
-
-   #=  if p.no_cap
-
-    elseif p.set_g_cov
-        if p.cov_val*p.popsize > length(v)
-            error("general population compliance is not enough to reach the coverage.")
-            exit(1)
-        else
-            aux = Int(round(p.cov_val*p.popsize))
-            v = v[1:aux]
-        end
-    else
-        if p.fixed_cov*p.popsize > length(v)
-            error("general population compliance is not enough to reach the coverage.")
-            exit(1)
-        else
-            aux = Int(round(p.fixed_cov*p.popsize))
-            v = v[1:aux]
-        end
-    end =#
+    #v = [pos_11;shuffle(rng,[pos_12;pos_21]);shuffle(rng,[pos_22;pos_o1]);shuffle(rng,[pos_o2;pos_y1]);pos_y2;pos_kid]#shuffle(rng,[pos_y2;pos_k1]);pos_k2]
+    v = [pos_hcw;pos2;pos_old;pos3;pos_kid]#shuffle(rng,[pos_y2;pos_k1]);pos_k2]
 
     return v
 end
